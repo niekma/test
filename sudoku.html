@@ -1,0 +1,264 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sudoku</title>
+<style>
+
+body {
+    margin-top: 15px;
+    margin-left: 25px;
+}
+
+table.tbl-default {
+    border: 2px solid black;
+    border-collapse: collapse;
+}
+
+table.tbl-default td {
+    border: 1px solid black;
+    font-family: monospace;
+    width: 2em;
+    height: 2em;
+    text-align: center;
+    vertical-align: middle;
+}
+
+table.tbl-default td:nth-child(3),table.tbl-default td:nth-child(6) {
+    border-right: 2px solid black;
+}
+
+table.tbl-default tr:nth-child(3),table.tbl-default tr:nth-child(6) {
+    border-bottom: 2px solid black;
+}
+
+#level {
+    display: inline-block;
+    text-align: center;
+    width: 95px;
+}
+
+</style>
+<script>
+
+var level = 5;
+var secret = Array.from(Array(81).fill(0));
+var initial = Object.values(secret);
+var current = Object.values(secret); 
+
+window.onkeydown = function(e) {
+    if (e.keyCode == 8 && e.target == document.body) {
+        e.preventDefault();
+    }
+}
+
+window.onload = function() {
+    onClickGenButton();
+}
+
+function initKeyDownListeners() {
+    var cells = document.getElementById('board').querySelectorAll('td');
+    for (var i = 0; i < cells.length; i++){
+        const cc = cells[i];
+        const ci = i;
+        cc.addEventListener('keydown', function(e) {
+            onKeyDownBoardCell(e, cc, ci);
+        });
+    }
+}
+
+function initInputListeners() {
+    var cells = document.getElementById('board').querySelectorAll('td');
+    for (var i = 0; i < cells.length; i++){
+        const cc = cells[i];
+        const ci = i;
+        cc.addEventListener('input', function(e) {
+            onInputBoardCell(e, cc, ci);
+        });
+    }
+}
+
+function generateSecret() {
+    var s = new Array(81);
+    var r = [[],[],[],[],[],[],[],[],[]];
+    var c = [[],[],[],[],[],[],[],[],[]];
+    var b = [[],[],[],[],[],[],[],[],[]];
+    s.fill(-1);
+    var p = [1,2,3,4,5,6,7,8,9];
+    for (var i=0;i<81;i++) {
+        //  coord = [r, c, b];
+        var coord = [(i/9)>>0, (i%9), (((i/3)%3)>>0)+(3*((i/27)>>0))];
+        var t = p.filter(e => !r[coord[0]].includes(e))
+                 .filter(e => !c[coord[1]].includes(e))
+                 .filter(e => !b[coord[2]].includes(e));
+        s[i] = t.splice(t.length*Math.random(),1)[0];
+        r[coord[0]].push(s[i]);
+        c[coord[1]].push(s[i]);
+        b[coord[2]].push(s[i]);
+    }
+    return s;
+}
+
+function initGame() {
+    var valid = true;
+    secret.forEach(e => { if (!e) valid = false; });
+    if (valid===true) {
+        initial = Object.values(secret);
+        var d = Array.from(Array(81).keys());
+        for (var j=0; j<(30+(level*2)); j++) {
+            var dd = d.splice(d.length*Math.random(),1)[0]
+            initial[dd] = 0;
+        }
+        current = Object.values(initial);
+    }
+    return valid;
+}
+
+function updateBoard() {
+    var board = document.getElementById('board');
+    var html = '';
+    current.forEach((e,i) => {
+        if (i!=0 && i!=80 && i%9==0) html += '</tr><tr>';
+        var opt = '';
+        if (initial[i]===0) opt = ' style="color:red" contenteditable="true" spellcheck="false"' 
+        if (e===0) {
+            html += '<td'+opt+'><wbr></td>';
+        } else {
+            html += '<td'+opt+'>'+e+'</td>';
+        }
+    });
+    board.innerHTML = '<tr>'+html+'</tr>';
+    initInputListeners();
+}
+
+function printSecret() {
+    var s = secret.reduce((a,c,i) => {
+        a+=' '+c;
+        if ((i+1)%9==0 && (i+1)!=secret.length) a += '\n';
+        return a;
+    });
+    console.log(' '+s);
+}
+
+function deepTest() {
+    console.log('using deepTest');
+    var valid = true;
+    var r = [[],[],[],[],[],[],[],[],[]];
+    var c = [[],[],[],[],[],[],[],[],[]];
+    var b = [[],[],[],[],[],[],[],[],[]];
+    for (var i=0;i<81;i++) {
+        //  coord = [r, c, b];
+        var coord = [(i/9)>>0, (i%9), (((i/3)%3)>>0)+(3*((i/27)>>0))];
+        r[coord[0]].push(current[i]);
+        c[coord[1]].push(current[i]);
+        b[coord[2]].push(current[i]);
+    }
+    var p = [1,2,3,4,5,6,7,8,9];
+    r.forEach(er => {
+        p.forEach(x => { if (!er.includes(x)) valid = false; });
+    });
+    if (valid===true) c.forEach(ec => {
+        p.forEach(x => { if (!ec.includes(x)) valid = false; });
+    });
+    if (valid===true) b.forEach(eb => {
+        p.forEach(x => { if (!eb.includes(x)) valid = false; });
+    });
+    return valid;
+}
+
+function onClickGenButton() {
+    secret = generateSecret();
+    while (!initGame()) {
+        secret = generateSecret();
+    }
+    updateBoard();
+}
+
+function onClickResetButton() {
+    current = Object.values(initial);
+    updateBoard();
+}
+
+function onClickQueryButton() {
+    var solved = true;
+    for (var i=0; i<81; i++) {
+        if (current[i]!==secret[i]) solved = false;
+    }
+    if (solved===false) solved = deepTest();
+    if (solved===true) {
+        alert('Korrekt!');
+    } else {
+        alert('Da passt was nicht. Schau nochmal.');
+    }
+}
+
+function onKeyDownBoardCell(e, c, i) {
+    e.preventDefault();
+    //console.log('onKeyDownBoardCell Index '+i+' Key '+e.key);
+    if (['0','1','2','3','4','5','6','7','8','9','x','Delete','Backspace'].includes(e.key)) {
+        if (['0','x','Delete','Backspace'].includes(e.key)) {
+            current[i] = 0;
+        } else {
+            current[i] = parseInt(e.key);
+        }
+        updateBoard();
+    }
+}
+
+function onInputBoardCell(e, c, i) {
+    e.preventDefault();
+    var inp = e.data;
+    if (inp==null) {
+        if (e.inputType==='deleteContentBackward') inp = 'Backspace';
+        if (e.inputType==='deleteContentForward') inp = 'Delete';
+        if (e.inputType==='insertParagraph') inp = 'Enter';
+    }
+    //console.log('onInputBoardCell Index '+i+' Key '+inp);
+    if (['0','1','2','3','4','5','6','7','8','9','x','X','Delete','Backspace'].includes(inp)) {
+        if (['0','x','X','Delete','Backspace', null].includes(inp)) {
+            current[i] = 0;
+        } else {
+            current[i] = parseInt(inp);
+        }
+    }
+    updateBoard();
+}
+
+function onClickEasierButton() {
+    if (level>0) level--;
+    var el = document.getElementById('level');
+    el.innerHTML = 'Stufe '+level;
+}
+
+function onClickHarderButton() {
+    if (level<10) level++;
+    var el = document.getElementById('level');
+    el.innerHTML = 'Stufe '+level;
+}
+
+</script>
+</head>
+<body>
+  <p>Spielfläche</p>
+  <table id="board" class="tbl-default">
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <p>Optionen</p>
+  <button onclick="onClickQueryButton()">Prüfen</button>
+  <button onclick="onClickResetButton()">Zurücksetzen</button>
+  <button onclick="onClickGenButton()">Neues Spiel</button>
+  <br><br>
+  <button onclick="onClickEasierButton()">einfacher</button>
+  <span id="level">Stufe 5</span>
+  <button onclick="onClickHarderButton()">schwerer</button>
+</body>
+</html>
